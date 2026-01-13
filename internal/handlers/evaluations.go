@@ -52,6 +52,23 @@ func enhanceLoggerWithRequest(logger *zap.Logger, r *http.Request) *zap.Logger {
 	// Add request_id to logger using With
 	enhancedLogger := logger.With(zap.String(constants.LOG_REQUEST_ID, requestID))
 
+	// Extract and add HTTP method and URI if they exist
+	method := r.Method
+	if method != "" {
+		enhancedLogger = enhancedLogger.With(zap.String(constants.LOG_METHOD, method))
+	}
+
+	uri := ""
+	if r.URL != nil {
+		uri = r.URL.Path
+	}
+	if uri == "" {
+		uri = r.RequestURI
+	}
+	if uri != "" {
+		enhancedLogger = enhancedLogger.With(zap.String(constants.LOG_URI, uri))
+	}
+
 	// Extract and add HTTP request fields to logger if they exist
 	userAgent := r.Header.Get("User-Agent")
 	if userAgent != "" {
