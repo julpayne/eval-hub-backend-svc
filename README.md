@@ -48,9 +48,39 @@ PORT=3000 go run cmd/eval_hub/main.go
 
 ### API Endpoints
 
+#### Evaluations
+- `POST /api/v1/evaluations/jobs` - Create Evaluation
+- `GET /api/v1/evaluations/jobs` - List Evaluations
+- `GET /api/v1/evaluations/jobs/{id}` - Get Evaluation Status
+- `DELETE /api/v1/evaluations/jobs/{id}` - Cancel Evaluation
+- `GET /api/v1/evaluations/jobs/{id}/summary` - Get Evaluation Summary
+
+#### Benchmarks
+- `GET /api/v1/evaluations/benchmarks` - List All Benchmarks
+
+#### Collections
+- `GET /api/v1/evaluations/collections` - List Collections
+- `POST /api/v1/evaluations/collections` - Create Collection
+- `GET /api/v1/evaluations/collections/{collection_id}` - Get Collection
+- `PUT /api/v1/evaluations/collections/{collection_id}` - Update Collection
+- `PATCH /api/v1/evaluations/collections/{collection_id}` - Patch Collection
+- `DELETE /api/v1/evaluations/collections/{collection_id}` - Delete Collection
+
+#### Providers
+- `GET /api/v1/evaluations/providers` - List Providers
+- `GET /api/v1/evaluations/providers/{provider_id}` - Get Provider
+
+#### Health
 - `GET /api/v1/health` - Health check endpoint
+
+#### Status
 - `GET /api/v1/status` - Service status endpoint
+
+#### Metrics
+- `GET /api/v1/metrics/system` - Get System Metrics
 - `GET /metrics` - Prometheus metrics endpoint
+
+#### Documentation
 - `GET /openapi.yaml` - OpenAPI 3.1.0 specification
 - `GET /docs` - Interactive API documentation (Swagger UI)
 
