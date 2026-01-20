@@ -9,6 +9,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+type EnvMap struct {
+	Mappings map[string]string `mapstructure:"mappings,omitempty"`
+}
+
+type SecretMap struct {
+	Dir      string            `mapstructure:"dir,omitempty"`
+	Mappings map[string]string `mapstructure:"mappings,omitempty"`
+}
+
 func readConfig(logger *slog.Logger, defaultConfigValues *viper.Viper, name string, ext string, dirs ...string) (*viper.Viper, error) {
 	logger.Info("Reading the configuration file", "file", fmt.Sprintf("%s.%s", name, ext), "dirs", fmt.Sprintf("%v", dirs))
 
@@ -39,30 +48,41 @@ func readConfig(logger *slog.Logger, defaultConfigValues *viper.Viper, name stri
 
 func LoadConfig(logger *slog.Logger) (*Config, error) {
 	// first load the server.yaml as the default config (the server.yaml from cmd/eval_hub)
-	defaultConfigValues, err := readConfig(logger, nil, "server", "yaml", "config", ".", "../cmd/eval_hub", "../../cmd/eval_hub")
+	defaultConfigValues, err := readConfig(logger, nil, "server", "yaml", "config", "./cmd/eval_hub")
 	if err != nil {
 		return nil, err
 	}
+
 	// now load the cluster config if found
 	configValues, err := readConfig(logger, defaultConfigValues, "config", "yaml", ".", "..")
-	if err != nil {
+	// for now we ignre this error because there is no extra config when running locally
+	// if err != nil {
+	//	 return nil, err
+	// }
+
+	// set up the secrets from the secrets directory
+	secrets := SecretMap{}
+	if err := configValues.Unmarshal(&secrets); err != nil {
 		return nil, err
 	}
-	// set up the secrets from the secrets directory
-	secretsDir := configValues.GetString("secrets.dir")
-	if secretsDir != "" {
-		mappings := configValues.GetStringMap("secrets.mappings")
-		for fieldName, value := range mappings {
-			secret := getSecret(secretsDir, value.(string))
-			if secret != "" {
-				configValues.Set(fieldName, secret)
+	if secrets.Dir != "" {
+		// check that the secrets directory exists
+		if _, err := os.Stat(secrets.Dir); !os.IsNotExist(err) {
+			for fieldName, value := range secrets.Mappings {
+				secret := getSecret(secrets.Dir, value)
+				if secret != "" {
+					configValues.Set(fieldName, secret)
+				}
 			}
 		}
 	}
 	// set up the environment variable mappings
-	envMappings := configValues.GetStringMap("env.mappings")
-	for fieldName, value := range envMappings {
-		envNames := strings.Split(value.(string), ",")
+	envMappings := EnvMap{}
+	if err := configValues.Unmarshal(&envMappings); err != nil {
+		return nil, err
+	}
+	for fieldName, values := range envMappings.Mappings {
+		envNames := strings.Split(values, ",")
 		elems := make([]string, 0, len(envNames)+1)
 		elems = append(elems, fieldName)
 		elems = append(elems, envNames...)

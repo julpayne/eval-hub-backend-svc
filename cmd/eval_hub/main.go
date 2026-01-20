@@ -23,7 +23,7 @@ func main() {
 		log.Fatal("Failed to create service logger:", err)
 	}
 
-	serviceConfig, err := config.LoadConfig(nil)
+	serviceConfig, err := config.LoadConfig(logger)
 	if err != nil {
 		log.Fatal("Failed to create service config:", err)
 	}
