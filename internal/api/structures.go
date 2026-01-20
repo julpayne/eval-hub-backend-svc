@@ -2,6 +2,16 @@ package api
 
 import "time"
 
+// ------------------------------------------------------------------------------------------------
+// General naming conventions:
+// ------------------------------------------------------------------------------------------------
+// - ...Config - represents an object specified by the user when creating or updating a resource.
+// - ...Resource - represents an object stored in the database. This is the REST resource.
+// - ...ResourceList - represents a list of REST resources
+// - ...Ref - represents a reference to an object
+// - ...Error - represents an error response
+// ------------------------------------------------------------------------------------------------
+
 // State represents the evaluation state enum
 type State string
 

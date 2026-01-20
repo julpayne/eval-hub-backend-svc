@@ -6,14 +6,14 @@ type SupportedBenchmark struct {
 }
 
 // Provider represents provider specification
-type Provider struct {
+type ProviderResource struct {
 	ID                  string               `json:"id"`
 	Label               string               `json:"label"`
 	SupportedBenchmarks []SupportedBenchmark `json:"supported_benchmarks,omitempty"`
 }
 
-// ProviderList represents response for listing providers
-type ProviderList struct {
-	TotalCount int        `json:"total_count"`
-	Items      []Provider `json:"items"`
+// ProviderResourceList represents response for listing providers
+type ProviderResourceList struct {
+	TotalCount int                `json:"total_count"`
+	Items      []ProviderResource `json:"items"`
 }

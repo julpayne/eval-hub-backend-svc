@@ -10,8 +10,8 @@ type BenchmarkResource struct {
 	Tags        []string `json:"tags,omitempty"`
 }
 
-// BenchmarksList represents list of benchmarks
-type BenchmarksList struct {
+// BenchmarkResourceList represents list of benchmarks
+type BenchmarkResourceList struct {
 	TotalCount int                 `json:"total_count"`
 	Items      []BenchmarkResource `json:"items"`
 }
