@@ -119,7 +119,7 @@ The project includes a Makefile with common development tasks:
 - `make build` - Build the binary
 - `make run` - Run the application
 - `make lint` - Lint the code (runs go vet)
-- `make fmt` - Format code with go fmt (NOTE: converts to tabs per Go standard)
+- `make fmt` - Format code with go fmt
 - `make vet` - Run go vet
 - `make test` - Run unit tests
 - `make test-fvt` - Run FVT (Functional Verification Tests) using godog

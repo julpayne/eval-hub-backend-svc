@@ -43,14 +43,13 @@ run: ## Run the application
 	@echo "Running $(BINARY_NAME) on port $(PORT)..."
 	@PORT=$(PORT) go run $(CMD_PATH)/main.go
 
-lint: ## Lint the code (runs go vet, skips go fmt to preserve 2-space indentation)
+lint: ## Lint the code (runs go vet)
 	@echo "Linting code..."
 	@go vet ./...
 	@echo "Lint complete"
 
-fmt: ## Format the code with go fmt (NOTE: converts indentation to tabs per Go standard)
+fmt: ## Format the code with go fmt
 	@echo "Formatting code with go fmt..."
-	@echo "WARNING: go fmt will convert indentation to tabs (Go standard)"
 	@go fmt ./...
 	@echo "Format complete"
 

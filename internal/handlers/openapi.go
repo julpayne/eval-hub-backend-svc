@@ -1,75 +1,75 @@
 package handlers
 
 import (
-  "net/http"
-  "os"
-  "path/filepath"
+	"net/http"
+	"os"
+	"path/filepath"
 )
 
 func (h *Handlers) HandleOpenAPI(w http.ResponseWriter, r *http.Request) {
-  if r.Method != http.MethodGet {
-    http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-    return
-  }
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-  // Determine content type based on Accept header
-  accept := r.Header.Get("Accept")
-  contentType := "application/yaml"
-  if accept == "application/json" {
-    contentType = "application/json"
-  }
+	// Determine content type based on Accept header
+	accept := r.Header.Get("Accept")
+	contentType := "application/yaml"
+	if accept == "application/json" {
+		contentType = "application/json"
+	}
 
-  w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Type", contentType)
 
-  // Find the OpenAPI spec file relative to the working directory
-  // Try multiple possible locations
-  possiblePaths := []string{
-    "api/openapi.yaml",
-    "../../api/openapi.yaml",
-    filepath.Join("api", "openapi.yaml"),
-  }
+	// Find the OpenAPI spec file relative to the working directory
+	// Try multiple possible locations
+	possiblePaths := []string{
+		"api/openapi.yaml",
+		"../../api/openapi.yaml",
+		filepath.Join("api", "openapi.yaml"),
+	}
 
-  var spec []byte
-  var err error
-  for _, path := range possiblePaths {
-    spec, err = os.ReadFile(path)
-    if err == nil {
-      break
-    }
-  }
+	var spec []byte
+	var err error
+	for _, path := range possiblePaths {
+		spec, err = os.ReadFile(path)
+		if err == nil {
+			break
+		}
+	}
 
-  if err != nil {
-    // If file not found, try to find it relative to the executable
-    exePath, _ := os.Executable()
-    if exePath != "" {
-      exeDir := filepath.Dir(exePath)
-      specPath := filepath.Join(exeDir, "api", "openapi.yaml")
-      spec, err = os.ReadFile(specPath)
-    }
-  }
+	if err != nil {
+		// If file not found, try to find it relative to the executable
+		exePath, _ := os.Executable()
+		if exePath != "" {
+			exeDir := filepath.Dir(exePath)
+			specPath := filepath.Join(exeDir, "api", "openapi.yaml")
+			spec, err = os.ReadFile(specPath)
+		}
+	}
 
-  if err != nil {
-    http.Error(w, "Failed to read OpenAPI spec: "+err.Error(), http.StatusInternalServerError)
-    return
-  }
+	if err != nil {
+		http.Error(w, "Failed to read OpenAPI spec: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-  w.Write(spec)
+	w.Write(spec)
 }
 
 func (h *Handlers) HandleDocs(w http.ResponseWriter, r *http.Request) {
-  if r.Method != http.MethodGet {
-    http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-    return
-  }
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-  // Get the base URL for the OpenAPI spec
-  scheme := "http"
-  if r.TLS != nil {
-    scheme = "https"
-  }
-  baseURL := scheme + "://" + r.Host
+	// Get the base URL for the OpenAPI spec
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	baseURL := scheme + "://" + r.Host
 
-  html := `<!DOCTYPE html>
+	html := `<!DOCTYPE html>
 <html>
 <head>
   <title>Eval Hub Backend Service API Documentation</title>
@@ -113,6 +113,6 @@ func (h *Handlers) HandleDocs(w http.ResponseWriter, r *http.Request) {
 </body>
 </html>`
 
-  w.Header().Set("Content-Type", "text/html; charset=utf-8")
-  w.Write([]byte(html))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
 }
