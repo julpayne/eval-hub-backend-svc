@@ -25,12 +25,14 @@ autoupdate-precommit:
 
 pre-commit: autoupdate-precommit ${PRE_COMMIT}
 
+CLEAN_OPTS ?= -r -cache -testcache # -x
+
 clean: ## Remove build artifacts
 	@echo "Cleaning..."
 	@rm -rf $(BIN_DIR)
 	@rm -f $(BINARY_NAME)
 	@rm -f coverage.out coverage.html
-	@go clean
+	@go clean ${CLEAN_OPTS}
 	@echo "Clean complete"
 
 build: ## Build the binary
