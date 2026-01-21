@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -59,6 +60,9 @@ func readConfig(logger *slog.Logger, defaultConfigValues *viper.Viper, name stri
 // Configuration supports:
 //   - Environment variable mapping: Define in env.mappings (e.g., PORT → service.port)
 //   - Secrets from files: Define in secrets.mappings with secrets.dir (e.g., /tmp/db_password → database.password)
+//   - Optional secrets: Append :optional to the secret file name to mark it as optional.
+//     If an optional secret file doesn't exist, no error is logged and the configuration
+//     continues loading without that secret value.
 //
 // Example configuration structure:
 //
@@ -69,6 +73,7 @@ func readConfig(logger *slog.Logger, defaultConfigValues *viper.Viper, name stri
 //	  dir: /tmp
 //	  mappings:
 //	    database.password: db_password
+//	    optional.token: api_token:optional
 //
 // Parameters:
 //   - logger: The logger for configuration loading messages
@@ -99,7 +104,17 @@ func LoadConfig(logger *slog.Logger) (*Config, error) {
 		// check that the secrets directory exists
 		if _, err := os.Stat(secrets.Dir); !os.IsNotExist(err) {
 			for fieldName, value := range secrets.Mappings {
-				secret := getSecret(secrets.Dir, value)
+				// the secret file name can be optional by appending :optional to the file name
+				optional := strings.HasSuffix(value, ":optional")
+				if optional {
+					value = strings.TrimSuffix(value, ":optional")
+				}
+				secret, err := getSecret(secrets.Dir, value, optional)
+				if err != nil {
+					// log the error and fail the startup (by returning the error)
+					logger.Error("Failed to read secret file", "file", fmt.Sprintf("%s/%s", secrets.Dir, value), "error", err.Error())
+					return nil, err
+				}
 				if secret != "" {
 					configValues.Set(fieldName, secret)
 				}
@@ -126,10 +141,27 @@ func LoadConfig(logger *slog.Logger) (*Config, error) {
 	return &conf, nil
 }
 
-func getSecret(secretsDir string, secretName string) string {
+// getSecret reads a secret from a file and returns the value as a string.
+// If the file does not exist and optional is false, it logs an error and returns an empty string.
+// If the file does not exist and optional is true, it silently returns an empty string.
+// If the file cannot be read (permissions, etc.), it always logs an error and returns an empty string.
+//
+// Parameters:
+//   - logger: The logger for logging messages
+//   - secretsDir: The directory containing the secret files
+//   - secretName: The name of the secret file
+//   - optional: If true, missing files won't generate error logs
+//
+// Returns:
+//   - string: The value of the secret as a string, or empty string if file doesn't exist or cannot be read
+func getSecret(secretsDir string, secretName string, optional bool) (string, error) {
+	// this is the full name of the secrets file to read
 	secret, err := os.ReadFile(fmt.Sprintf("%s/%s", secretsDir, secretName))
 	if err != nil {
-		return ""
+		if errors.Is(err, os.ErrNotExist) && optional {
+			return "", nil
+		}
+		return "", err
 	}
-	return string(secret)
+	return string(secret), nil
 }
