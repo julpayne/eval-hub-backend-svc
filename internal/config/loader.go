@@ -46,6 +46,36 @@ func readConfig(logger *slog.Logger, defaultConfigValues *viper.Viper, name stri
 	return configValues, err
 }
 
+// LoadConfig loads configuration using a two-tier system with Viper. This implements
+// a sophisticated loading strategy that supports cascading configuration values and
+// multiple sources.
+//
+// Configuration loading order (later sources override earlier ones):
+//  1. server.yaml (cmd/eval_hub/server.yaml) - Default configuration loaded first
+//  2. config.yaml (optional, searched in "." and "..") - Cluster-specific overrides
+//  3. Environment variables - Mapped via env.mappings configuration
+//  4. Secrets from files - Mapped via secrets.mappings with secrets.dir
+//
+// Configuration supports:
+//   - Environment variable mapping: Define in env.mappings (e.g., PORT → service.port)
+//   - Secrets from files: Define in secrets.mappings with secrets.dir (e.g., /tmp/db_password → database.password)
+//
+// Example configuration structure:
+//
+//	env:
+//	  mappings:
+//	    service.port: PORT
+//	secrets:
+//	  dir: /tmp
+//	  mappings:
+//	    database.password: db_password
+//
+// Parameters:
+//   - logger: The logger for configuration loading messages
+//
+// Returns:
+//   - *Config: The loaded configuration with all sources applied
+//   - error: An error if configuration cannot be loaded or is invalid
 func LoadConfig(logger *slog.Logger) (*Config, error) {
 	// first load the server.yaml as the default config (the server.yaml from cmd/eval_hub)
 	defaultConfigValues, err := readConfig(logger, nil, "server", "yaml", "config", "./cmd/eval_hub")

@@ -23,6 +23,25 @@ type Server struct {
 	serviceConfig *config.Config
 }
 
+// NewServer creates a new HTTP server instance with the provided logger and configuration.
+// The server uses standard library net/http.ServeMux for routing without a web framework.
+//
+// The server implements the routing pattern where:
+//   - Basic handlers (health, status, OpenAPI) receive http.ResponseWriter, *http.Request
+//   - Evaluation-related handlers receive *ExecutionContext, http.ResponseWriter, *http.Request
+//   - ExecutionContext is created at the route level before calling handlers
+//   - Routes manually switch on HTTP method in handler functions
+//
+// All routes are wrapped with Prometheus metrics middleware for request duration and
+// status code tracking.
+//
+// Parameters:
+//   - logger: The structured logger for the server
+//   - serviceConfig: The service configuration containing port and other settings
+//
+// Returns:
+//   - *Server: A configured server instance ready to start
+//   - error: An error if logger or serviceConfig is nil
 func NewServer(logger *slog.Logger, serviceConfig *config.Config) (*Server, error) {
 	if logger == nil {
 		return nil, fmt.Errorf("logger is required for the server")

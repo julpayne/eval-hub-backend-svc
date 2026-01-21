@@ -30,7 +30,28 @@ func NewLogger() (*slog.Logger, error) {
 	return slog.New(zapslog.NewHandler(zapLog.Core())), nil
 }
 
-// LoggerWithRequest enhances a logger with request-specific fields
+// LoggerWithRequest enhances a logger with request-specific fields for distributed
+// tracing and structured logging. This function is called when creating an ExecutionContext
+// to automatically enrich all log entries for a given HTTP request with consistent metadata.
+//
+// The enhanced logger includes the following fields (when available):
+//   - request_id: Extracted from X-Global-Transaction-Id header, or auto-generated UUID if missing
+//   - method: HTTP method (GET, POST, etc.)
+//   - uri: Request path (from URL.Path or RequestURI)
+//   - user_agent: Client user agent from User-Agent header
+//   - remote_addr: Client IP address
+//   - remote_user: Authenticated user from URL user info or Remote-User header
+//   - referer: HTTP referer header
+//
+// This enables correlating logs across services using the request_id and provides
+// comprehensive request context in all log entries.
+//
+// Parameters:
+//   - logger: The base logger to enhance
+//   - r: The HTTP request to extract fields from
+//
+// Returns:
+//   - *slog.Logger: A new logger instance with request-specific fields attached
 func LoggerWithRequest(logger *slog.Logger, r *http.Request) *slog.Logger {
 	// Extract RequestID from X-Global-Transaction-Id header, or generate a UUID if not present
 	requestID := r.Header.Get("X-Global-Transaction-Id")
