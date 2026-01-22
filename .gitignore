@@ -33,3 +33,6 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# fix this (it should be in the bin directory)
+eval_hub
