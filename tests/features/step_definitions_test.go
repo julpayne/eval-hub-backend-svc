@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.ibm.com/julpayne/eval-hub-backend-svc/cmd/eval_hub/server"
 	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/config"
 	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/logging"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/server"
 
 	"github.com/cucumber/godog"
 )
@@ -62,11 +62,34 @@ func (a *apiFeature) theServiceIsRunning(ctx context.Context) error {
 		a.httpServer.Serve(listener)
 	}()
 
-	// Wait for server to start
-	time.Sleep(200 * time.Millisecond)
-
 	a.client = &http.Client{
 		Timeout: 5 * time.Second,
+	}
+
+	// Check that the server is actually running by sending a request to the health endpoint
+	for range 10 {
+		if err := a.checkHealthEndpoint(); err != nil {
+			fmt.Printf("Error checking health endpoint: %v\n", err.Error())
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
+	}
+
+	return nil
+}
+
+func (a *apiFeature) checkHealthEndpoint() error {
+	if err := a.iSendARequestTo("GET", "/api/v1/health"); err != nil {
+		return fmt.Errorf("failed to send health check request: %w", err)
+	}
+	if a.response.StatusCode != 200 {
+		return fmt.Errorf("expected status 200, got %d", a.response.StatusCode)
+	}
+
+	match := "\"status\":\"healthy\""
+	if !strings.Contains(string(a.body), match) {
+		return fmt.Errorf("expected body to contain %s, got %s", match, string(a.body))
 	}
 
 	return nil

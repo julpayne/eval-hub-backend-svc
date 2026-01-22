@@ -81,7 +81,7 @@ func readConfig(logger *slog.Logger, defaultConfigValues *viper.Viper, name stri
 // Returns:
 //   - *Config: The loaded configuration with all sources applied
 //   - error: An error if configuration cannot be loaded or is invalid
-func LoadConfig(logger *slog.Logger) (*Config, error) {
+func LoadConfig(logger *slog.Logger, version string, build string, buildDate string) (*Config, error) {
 	// first load the server.yaml as the default config (the server.yaml from cmd/eval_hub)
 	defaultConfigValues, err := readConfig(logger, nil, "server", "yaml", "config", "./cmd/eval_hub")
 	if err != nil {
@@ -138,6 +138,12 @@ func LoadConfig(logger *slog.Logger) (*Config, error) {
 	if err := configValues.Unmarshal(&conf); err != nil {
 		return nil, err
 	}
+
+	// set the version, build, and build date
+	conf.Service.Version = version
+	conf.Service.Build = build
+	conf.Service.BuildDate = buildDate
+
 	return &conf, nil
 }
 

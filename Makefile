@@ -1,15 +1,17 @@
-.PHONY: help autoupdate-precommit pre-commit clean build run lint test fmt vet update-deps
+.PHONY: help autoupdate-precommit pre-commit clean build start-service stop-service lint test fmt vet update-deps
 
 # Variables
-BINARY_NAME=eval-hub-backend-svc
-CMD_PATH=./cmd/eval_hub
-BIN_DIR=bin
-PORT?=8080
+BINARY_NAME = eval-hub-backend-svc
+CMD_PATH = ./cmd/eval_hub
+BIN_DIR = bin
+PORT ?= 8080
 
 # Default target
 .DEFAULT_GOAL := help
 
 UNAME := $(shell uname)
+
+DATE ?= $(shell date +%FT%T%z)
 
 help: ## Display this help message
 	@echo "Available targets:"
@@ -35,15 +37,32 @@ clean: ## Remove build artifacts
 	@go clean ${CLEAN_OPTS}
 	@echo "Clean complete"
 
+BUILD_PACKAGE ?= main
+APP_VERSION ?= 0.0.1
+FULL_BUILD_NUMBER ?= 0.0.1
+LDFLAGS_X = -X "${BUILD_PACKAGE}.Version=${APP_VERSION}" -X "${BUILD_PACKAGE}.Build=${FULL_BUILD_NUMBER}" -X "${BUILD_PACKAGE}.BuildDate=$(DATE)"
+LDFLAGS = -buildmode=exe ${LDFLAGS_X}
+
 build: ## Build the binary
-	@echo "Building $(BINARY_NAME)..."
+	@echo "Building $(BINARY_NAME) with ${LDFLAGS}"
 	@mkdir -p $(BIN_DIR)
-	@go build -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_PATH)
+	@go build -ldflags "${LDFLAGS}" -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_PATH)
 	@echo "Build complete: $(BIN_DIR)/$(BINARY_NAME)"
 
-run: ## Run the application
+SERVER_PID_FILE ?= $(BIN_DIR)/pid
+
+${SERVER_PID_FILE}:
+	rm -f "${SERVER_PID_FILE}" && true
+
+SERVICE_LOG ?= $(BIN_DIR)/service.log
+
+start-service: ${SERVER_PID_FILE} build## Run the application
 	@echo "Running $(BINARY_NAME) on port $(PORT)..."
-	@PORT=$(PORT) go run $(CMD_PATH)/main.go
+	# @PORT=$(PORT) go run -ldflags "${LDFLAGS}" $(CMD_PATH)/main.go > ${SERVICE_LOG}
+	@./scripts/start_server.sh "${SERVER_PID_FILE}" "${BIN_DIR}/$(BINARY_NAME)" "${SERVICE_LOG}" ${PORT} ""
+
+stop-service:
+	-./scripts/stop_server.sh "${SERVER_PID_FILE}"
 
 lint: ## Lint the code (runs go vet)
 	@echo "Linting code..."

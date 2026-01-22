@@ -1,4 +1,4 @@
-package server
+package server_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.ibm.com/julpayne/eval-hub-backend-svc/cmd/eval_hub/server"
 	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/config"
 	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/logging"
 )
@@ -24,8 +25,8 @@ func TestNewServer(t *testing.T) {
 			t.Fatal("NewServer() returned nil")
 		}
 
-		if srv.port != 8080 {
-			t.Errorf("Expected default port 8080, got %d", srv.port)
+		if srv.GetPort() != 8080 {
+			t.Errorf("Expected default port 8080, got %d", srv.GetPort())
 		}
 	})
 
@@ -38,8 +39,8 @@ func TestNewServer(t *testing.T) {
 			t.Fatalf("NewServer() returned error: %v", err)
 		}
 
-		if srv.port != 9000 {
-			t.Errorf("Expected port 9000, got %d", srv.port)
+		if srv.GetPort() != 9000 {
+			t.Errorf("Expected port 9000, got %d", srv.GetPort())
 		}
 	})
 }
@@ -49,13 +50,13 @@ func TestServerSetupRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewServer() returned error: %v", err)
 	}
-	handler, err := srv.setupRoutes()
+	handler, err := srv.SetupRoutes()
 	if err != nil {
-		t.Fatalf("setupRoutes() returned error: %v", err)
+		t.Fatalf("SetupRoutes() returned error: %v", err)
 	}
 
 	if handler == nil {
-		t.Fatal("setupRoutes() returned nil handler")
+		t.Fatal("SetupRoutes() returned nil handler")
 	}
 
 	// Test that routes are registered
@@ -110,12 +111,13 @@ func TestServerSetupRoutes(t *testing.T) {
 
 func TestServerShutdown(t *testing.T) {
 	t.Run("shutdown returns nil when server is nil", func(t *testing.T) {
-		srv := &Server{
-			httpServer: nil,
+		srv, err := createServer(8080)
+		if err != nil {
+			t.Fatalf("NewServer() returned error: %v", err)
 		}
 
 		ctx := context.Background()
-		err := srv.Shutdown(ctx)
+		err = srv.Shutdown(ctx)
 
 		if err != nil {
 			t.Errorf("Expected nil error when server is nil, got %v", err)
@@ -123,11 +125,10 @@ func TestServerShutdown(t *testing.T) {
 	})
 
 	t.Run("shutdown works with running server", func(t *testing.T) {
-		srv, err := createServer(8080)
+		srv, err := createServer(0) // Use random port for testing
 		if err != nil {
 			t.Fatalf("NewServer() returned error: %v", err)
 		}
-		srv.port = 0 // Use random port for testing
 
 		// Start server in background
 		errChan := make(chan error, 1)
@@ -159,10 +160,10 @@ func TestServerShutdown(t *testing.T) {
 	})
 }
 
-func createServer(port int) (*Server, error) {
+func createServer(port int) (*server.Server, error) {
 	logger, err := logging.NewLogger()
 	if err != nil {
 		return nil, err
 	}
-	return NewServer(logger, &config.Config{Service: &config.ServiceConfig{Port: port}})
+	return server.NewServer(logger, &config.Config{Service: &config.ServiceConfig{Port: port}})
 }

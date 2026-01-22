@@ -177,7 +177,7 @@ Unit tests are located alongside the code in `*_test.go` files:
 - `internal/handlers/handlers_test.go` - Handler unit tests
 - `internal/handlers/openapi_test.go` - OpenAPI handler tests
 - `internal/metrics/middleware_test.go` - Metrics middleware tests
-- `internal/server/server_test.go` - Server unit tests
+- `cmd/eval_hub/server/server_test.go` - Server unit tests
 
 Run unit tests:
 ```bash

@@ -3,6 +3,7 @@ package logging
 import (
 	"log/slog"
 	"net/http"
+	"os"
 
 	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/constants"
 
@@ -28,6 +29,10 @@ func NewLogger() (*slog.Logger, error) {
 		return nil, err
 	}
 	return slog.New(zapslog.NewHandler(zapLog.Core())), nil
+}
+
+func FallbackLogger() *slog.Logger {
+	return slog.New(slog.NewJSONHandler(os.Stdout, nil))
 }
 
 // LoggerWithRequest enhances a logger with request-specific fields for distributed

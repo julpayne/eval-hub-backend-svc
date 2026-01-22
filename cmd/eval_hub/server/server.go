@@ -40,7 +40,7 @@ type Server struct {
 //   - serviceConfig: The service configuration containing port and other settings
 //
 // Returns:
-//   - *Server: A configured server instance ready to start
+//   - *Server: A configured server instance
 //   - error: An error if logger or serviceConfig is nil
 func NewServer(logger *slog.Logger, serviceConfig *config.Config) (*Server, error) {
 	if logger == nil {
@@ -55,6 +55,10 @@ func NewServer(logger *slog.Logger, serviceConfig *config.Config) (*Server, erro
 		logger:        logger,
 		serviceConfig: serviceConfig,
 	}, nil
+}
+
+func (s *Server) GetPort() int {
+	return s.port
 }
 
 func (s *Server) setupRoutes() (http.Handler, error) {
@@ -175,7 +179,13 @@ func (s *Server) Start() error {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	fmt.Printf("Server starting on port %d\n", s.port)
+	s.logger.Info("Writing the server ready message", "file", s.serviceConfig.Service.ReadyFile)
+	err = SetReady(s.serviceConfig, s.logger)
+	if err != nil {
+		return err
+	}
+
+	s.logger.Info("Server starting", "port", s.port)
 	return s.httpServer.ListenAndServe()
 }
 
@@ -183,6 +193,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	if s.httpServer == nil {
 		return nil
 	}
-	fmt.Println("Shutting down server gracefully...")
+
+	s.logger.Info("Shutting down server gracefully...")
+	// do we need to flush the logs?
+
 	return s.httpServer.Shutdown(ctx)
 }

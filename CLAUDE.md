@@ -71,7 +71,7 @@ This project follows the standard Go project layout with a clear separation betw
 - **internal/handlers/** - HTTP request handlers
 - **internal/logging/** - Logger creation and request enhancement
 - **internal/metrics/** - Prometheus metrics and middleware
-- **internal/server/** - Server setup and routing
+- **cmd/eval_hub/server/** - Server setup and routing
 - **api/** - OpenAPI 3.1.0 specification
 - **tests/features/** - BDD-style FVT tests using godog
 
@@ -162,7 +162,7 @@ router.HandleFunc("/api/v1/evaluations/jobs", func(w http.ResponseWriter, r *htt
 Located alongside code in `*_test.go` files:
 - Test individual handlers, middleware, server setup
 - Use standard library `testing` package
-- Found in: `internal/handlers/*_test.go`, `internal/metrics/*_test.go`, `internal/server/*_test.go`
+- Found in: `internal/handlers/*_test.go`, `internal/metrics/*_test.go`, `cmd/eval_hub/server/*_test.go`
 
 #### FVT (Functional Verification Tests)
 BDD-style tests using godog in `tests/features/`:
