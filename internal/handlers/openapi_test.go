@@ -1,15 +1,18 @@
-package handlers
+package handlers_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/handlers"
 )
 
 func TestHandleOpenAPI(t *testing.T) {
-	h := New()
+	h := handlers.New()
 
 	// Ensure the OpenAPI file exists for testing
 	apiPath := filepath.Join("..", "..", "api", "openapi.yaml")
@@ -22,10 +25,10 @@ func TestHandleOpenAPI(t *testing.T) {
 	}
 
 	t.Run("GET request returns OpenAPI spec", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/openapi.yaml", nil)
+		ctx := createExecutionContext(http.MethodGet, "/openapi.yaml")
 		w := httptest.NewRecorder()
 
-		h.HandleOpenAPI(w, req)
+		h.HandleOpenAPI(ctx, w)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
@@ -42,16 +45,16 @@ func TestHandleOpenAPI(t *testing.T) {
 
 		// Check if response contains OpenAPI keywords
 		body := w.Body.String()
-		if !contains(body, "openapi") && !contains(body, "OpenAPI") {
+		if !strings.Contains(body, "openapi") && !strings.Contains(body, "OpenAPI") {
 			t.Error("Response does not appear to be an OpenAPI specification")
 		}
 	})
 
 	t.Run("POST request returns method not allowed", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/openapi.yaml", nil)
+		ctx := createExecutionContext(http.MethodPost, "/openapi.yaml")
 		w := httptest.NewRecorder()
 
-		h.HandleOpenAPI(w, req)
+		h.HandleOpenAPI(ctx, w)
 
 		if w.Code != http.StatusMethodNotAllowed {
 			t.Errorf("Expected status code %d, got %d", http.StatusMethodNotAllowed, w.Code)
@@ -59,11 +62,14 @@ func TestHandleOpenAPI(t *testing.T) {
 	})
 
 	t.Run("JSON content type when Accept header is application/json", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/openapi.yaml", nil)
-		req.Header.Set("Accept", "application/json")
+		ctx := createExecutionContext(http.MethodGet, "/openapi.yaml")
+		if ctx.Headers == nil {
+			ctx.Headers = make(map[string][]string)
+		}
+		ctx.Headers["Accept"] = []string{"application/json"}
 		w := httptest.NewRecorder()
 
-		h.HandleOpenAPI(w, req)
+		h.HandleOpenAPI(ctx, w)
 
 		contentType := w.Header().Get("Content-Type")
 		if contentType != "application/json" {
@@ -73,13 +79,13 @@ func TestHandleOpenAPI(t *testing.T) {
 }
 
 func TestHandleDocs(t *testing.T) {
-	h := New()
+	h := handlers.New()
 
 	t.Run("GET request returns HTML documentation", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/docs", nil)
+		ctx := createExecutionContext(http.MethodGet, "/docs")
 		w := httptest.NewRecorder()
 
-		h.HandleDocs(w, req)
+		h.HandleDocs(ctx, w)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
@@ -91,39 +97,23 @@ func TestHandleDocs(t *testing.T) {
 		}
 
 		body := w.Body.String()
-		if !contains(body, "swagger-ui") && !contains(body, "SwaggerUI") {
+		if !strings.Contains(body, "swagger-ui") && !strings.Contains(body, "SwaggerUI") {
 			t.Error("Response does not appear to be Swagger UI HTML")
 		}
 
-		if !contains(body, "openapi.yaml") {
+		if !strings.Contains(body, "openapi.yaml") {
 			t.Error("Response does not reference openapi.yaml")
 		}
 	})
 
 	t.Run("POST request returns method not allowed", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/docs", nil)
+		ctx := createExecutionContext(http.MethodPost, "/docs")
 		w := httptest.NewRecorder()
 
-		h.HandleDocs(w, req)
+		h.HandleDocs(ctx, w)
 
 		if w.Code != http.StatusMethodNotAllowed {
 			t.Errorf("Expected status code %d, got %d", http.StatusMethodNotAllowed, w.Code)
 		}
 	})
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > len(substr) && (s[:len(substr)] == substr ||
-			s[len(s)-len(substr):] == substr ||
-			findSubstring(s, substr))))
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

@@ -35,4 +35,4 @@ go.work.sum
 # .vscode/
 
 # fix this (it should be in the bin directory)
-eval_hub
+/eval_hub

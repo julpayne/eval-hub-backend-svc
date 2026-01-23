@@ -20,7 +20,9 @@ type ExecutionContext struct {
 	Config       *config.Config
 	Method       string
 	URI          string
+	BaseURL      string
 	RawQuery     string
+	Headers      map[string][]string
 	EvaluationID string
 	ModelURL     string
 	ModelName    string
@@ -32,4 +34,11 @@ type ExecutionContext struct {
 	Metadata       map[string]interface{}
 	MLflowClient   interface{}
 	ExperimentName *string
+}
+
+func (ctx *ExecutionContext) GetHeader(key string) string {
+	if (ctx.Headers != nil) && (ctx.Headers[key] != nil) && len(ctx.Headers[key]) > 0 {
+		return ctx.Headers[key][0]
+	}
+	return ""
 }

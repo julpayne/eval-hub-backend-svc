@@ -4,18 +4,21 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/execution_context"
 )
 
-func (h *Handlers) HandleOpenAPI(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+func (h *Handlers) HandleOpenAPI(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+	if ctx.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	// Determine content type based on Accept header
-	accept := r.Header.Get("Accept")
+	accept := ctx.GetHeader("Accept")
 	contentType := "application/yaml"
-	if accept == "application/json" {
+	if strings.Contains(accept, "application/json") {
 		contentType = "application/json"
 	}
 
@@ -56,18 +59,14 @@ func (h *Handlers) HandleOpenAPI(w http.ResponseWriter, r *http.Request) {
 	w.Write(spec)
 }
 
-func (h *Handlers) HandleDocs(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+func (h *Handlers) HandleDocs(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+	if ctx.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	// Get the base URL for the OpenAPI spec
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	}
-	baseURL := scheme + "://" + r.Host
+	baseURL := ctx.BaseURL
 
 	html := `<!DOCTYPE html>
 <html>

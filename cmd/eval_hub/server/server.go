@@ -239,8 +239,14 @@ func (s *Server) setupRoutes() (http.Handler, error) {
 	})
 
 	// OpenAPI documentation endpoints
-	router.HandleFunc("/openapi.yaml", h.HandleOpenAPI)
-	router.HandleFunc("/docs", h.HandleDocs)
+	router.HandleFunc("/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+		ctx := s.newExecutionContext(r)
+		h.HandleOpenAPI(ctx, w)
+	})
+	router.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
+		ctx := s.newExecutionContext(r)
+		h.HandleDocs(ctx, w)
+	})
 
 	// Prometheus metrics endpoint
 	router.Handle("/metrics", promhttp.Handler())
