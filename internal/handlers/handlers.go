@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"encoding/json"
+	"fmt"
 	"net/http"
-	"time"
+
+	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/execution_context"
 )
 
 type Handlers struct{}
@@ -12,30 +13,10 @@ func New() *Handlers {
 	return &Handlers{}
 }
 
-func (h *Handlers) HandleHealth(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+func (h *Handlers) checkMethod(ctx *execution_context.ExecutionContext, method string, w http.ResponseWriter) bool {
+	if ctx.Method != method {
+		http.Error(w, fmt.Sprintf("Method %s not allowed, expecting %s", ctx.Method, method), http.StatusMethodNotAllowed)
+		return false
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":    "healthy",
-		"timestamp": time.Now().UTC().Format(time.RFC3339),
-	})
-}
-
-func (h *Handlers) HandleStatus(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"service":   "eval-hub-backend-svc",
-		"version":   "1.0.0",
-		"status":    "running",
-		"timestamp": time.Now().UTC().Format(time.RFC3339),
-	})
+	return true
 }

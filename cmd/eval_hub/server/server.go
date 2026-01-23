@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/config"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/execution_context"
+	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/constants"
 	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/handlers"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/metrics"
 
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -61,40 +61,128 @@ func (s *Server) GetPort() int {
 	return s.port
 }
 
+// LoggerWithRequest enhances a logger with request-specific fields for distributed
+// tracing and structured logging. This function is called when creating an ExecutionContext
+// to automatically enrich all log entries for a given HTTP request with consistent metadata.
+//
+// The enhanced logger includes the following fields (when available):
+//   - request_id: Extracted from X-Global-Transaction-Id header, or auto-generated UUID if missing
+//   - method: HTTP method (GET, POST, etc.)
+//   - uri: Request path (from URL.Path or RequestURI)
+//   - user_agent: Client user agent from User-Agent header
+//   - remote_addr: Client IP address
+//   - remote_user: Authenticated user from URL user info or Remote-User header
+//   - referer: HTTP referer header
+//
+// This enables correlating logs across services using the request_id and provides
+// comprehensive request context in all log entries.
+//
+// Parameters:
+//   - logger: The base logger to enhance
+//   - r: The HTTP request to extract fields from
+//
+// Returns:
+//   - *slog.Logger: A new logger instance with request-specific fields attached
+func (s *Server) loggerWithRequest(r *http.Request) *slog.Logger {
+	enhancedLogger := s.logger
+
+	// Extract RequestID from X-Global-Transaction-Id header, or generate a UUID if not present
+	requestID := r.Header.Get("X-Global-Transaction-Id")
+	if requestID == "" {
+		requestID = uuid.New().String()
+	}
+
+	// Add request_id to logger using With
+	enhancedLogger = enhancedLogger.With(constants.LOG_REQUEST_ID, requestID)
+
+	// Extract and add HTTP method and URI if they exist
+	method := r.Method
+	if method != "" {
+		enhancedLogger = enhancedLogger.With(constants.LOG_METHOD, method)
+	}
+
+	uri := ""
+	if r.URL != nil {
+		uri = r.URL.Path
+	}
+	if uri == "" {
+		uri = r.RequestURI
+	}
+	if uri != "" {
+		enhancedLogger = enhancedLogger.With(constants.LOG_URI, uri)
+	}
+
+	// Extract and add HTTP request fields to logger if they exist
+	userAgent := r.Header.Get("User-Agent")
+	if userAgent != "" {
+		enhancedLogger = enhancedLogger.With(constants.LOG_USER_AGENT, userAgent)
+	}
+
+	remoteAddr := r.RemoteAddr
+	if remoteAddr != "" {
+		enhancedLogger = enhancedLogger.With(constants.LOG_REMOTE_ADR, remoteAddr)
+	}
+
+	// Extract remote_user from URL user info or header
+	remoteUser := ""
+	if r.URL != nil && r.URL.User != nil {
+		remoteUser = r.URL.User.Username()
+	}
+	if remoteUser == "" {
+		remoteUser = r.Header.Get("Remote-User")
+	}
+	if remoteUser != "" {
+		enhancedLogger = enhancedLogger.With(constants.LOG_USER, remoteUser)
+	}
+
+	referer := r.Header.Get("Referer")
+	if referer != "" {
+		enhancedLogger = enhancedLogger.With(constants.LOG_REFERER, referer)
+	}
+
+	return enhancedLogger
+}
+
 func (s *Server) setupRoutes() (http.Handler, error) {
 	router := http.NewServeMux()
 	h := handlers.New()
 
 	// Health and status endpoints
-	router.HandleFunc("/api/v1/health", h.HandleHealth)
-	router.HandleFunc("/api/v1/status", h.HandleStatus)
+	router.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
+		ctx := s.newExecutionContext(r)
+		h.HandleHealth(ctx, w)
+	})
+	router.HandleFunc("/api/v1/status", func(w http.ResponseWriter, r *http.Request) {
+		ctx := s.newExecutionContext(r)
+		h.HandleStatus(ctx, w)
+	})
 
 	// Evaluation jobs endpoints
 	router.HandleFunc("/api/v1/evaluations/jobs", func(w http.ResponseWriter, r *http.Request) {
-		ctx := execution_context.NewExecutionContext(r, s.logger, s.serviceConfig)
+		ctx := s.newExecutionContext(r)
 		switch r.Method {
 		case http.MethodPost:
-			h.HandleCreateEvaluation(ctx, w, r)
+			h.HandleCreateEvaluation(ctx, w)
 		case http.MethodGet:
-			h.HandleListEvaluations(ctx, w, r)
+			h.HandleListEvaluations(ctx, w)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
 	// Handle summary endpoint first (more specific)
 	router.HandleFunc("/api/v1/evaluations/jobs/", func(w http.ResponseWriter, r *http.Request) {
-		ctx := execution_context.NewExecutionContext(r, s.logger, s.serviceConfig)
+		ctx := s.newExecutionContext(r)
 		path := r.URL.Path
 		if strings.HasSuffix(path, "/summary") && r.Method == http.MethodGet {
-			h.HandleGetEvaluationSummary(ctx, w, r)
+			h.HandleGetEvaluationSummary(ctx, w)
 			return
 		}
 		// Handle individual job endpoints
 		switch r.Method {
 		case http.MethodGet:
-			h.HandleGetEvaluation(ctx, w, r)
+			h.HandleGetEvaluation(ctx, w)
 		case http.MethodDelete:
-			h.HandleCancelEvaluation(ctx, w, r)
+			h.HandleCancelEvaluation(ctx, w)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -102,33 +190,33 @@ func (s *Server) setupRoutes() (http.Handler, error) {
 
 	// Benchmarks endpoint
 	router.HandleFunc("/api/v1/evaluations/benchmarks", func(w http.ResponseWriter, r *http.Request) {
-		ctx := execution_context.NewExecutionContext(r, s.logger, s.serviceConfig)
-		h.HandleListBenchmarks(ctx, w, r)
+		ctx := s.newExecutionContext(r)
+		h.HandleListBenchmarks(ctx, w)
 	})
 
 	// Collections endpoints
 	router.HandleFunc("/api/v1/evaluations/collections", func(w http.ResponseWriter, r *http.Request) {
-		ctx := execution_context.NewExecutionContext(r, s.logger, s.serviceConfig)
+		ctx := s.newExecutionContext(r)
 		switch r.Method {
 		case http.MethodPost:
-			h.HandleCreateCollection(ctx, w, r)
+			h.HandleCreateCollection(ctx, w)
 		case http.MethodGet:
-			h.HandleListCollections(ctx, w, r)
+			h.HandleListCollections(ctx, w)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
 	router.HandleFunc("/api/v1/evaluations/collections/", func(w http.ResponseWriter, r *http.Request) {
-		ctx := execution_context.NewExecutionContext(r, s.logger, s.serviceConfig)
+		ctx := s.newExecutionContext(r)
 		switch r.Method {
 		case http.MethodGet:
-			h.HandleGetCollection(ctx, w, r)
+			h.HandleGetCollection(ctx, w)
 		case http.MethodPut:
-			h.HandleUpdateCollection(ctx, w, r)
+			h.HandleUpdateCollection(ctx, w)
 		case http.MethodPatch:
-			h.HandlePatchCollection(ctx, w, r)
+			h.HandlePatchCollection(ctx, w)
 		case http.MethodDelete:
-			h.HandleDeleteCollection(ctx, w, r)
+			h.HandleDeleteCollection(ctx, w)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -136,18 +224,18 @@ func (s *Server) setupRoutes() (http.Handler, error) {
 
 	// Providers endpoints
 	router.HandleFunc("/api/v1/evaluations/providers", func(w http.ResponseWriter, r *http.Request) {
-		ctx := execution_context.NewExecutionContext(r, s.logger, s.serviceConfig)
-		h.HandleListProviders(ctx, w, r)
+		ctx := s.newExecutionContext(r)
+		h.HandleListProviders(ctx, w)
 	})
 	router.HandleFunc("/api/v1/evaluations/providers/", func(w http.ResponseWriter, r *http.Request) {
-		ctx := execution_context.NewExecutionContext(r, s.logger, s.serviceConfig)
-		h.HandleGetProvider(ctx, w, r)
+		ctx := s.newExecutionContext(r)
+		h.HandleGetProvider(ctx, w)
 	})
 
 	// System metrics endpoint
 	router.HandleFunc("/api/v1/metrics/system", func(w http.ResponseWriter, r *http.Request) {
-		ctx := execution_context.NewExecutionContext(r, s.logger, s.serviceConfig)
-		h.HandleGetSystemMetrics(ctx, w, r)
+		ctx := s.newExecutionContext(r)
+		h.HandleGetSystemMetrics(ctx, w)
 	})
 
 	// OpenAPI documentation endpoints
@@ -158,7 +246,7 @@ func (s *Server) setupRoutes() (http.Handler, error) {
 	router.Handle("/metrics", promhttp.Handler())
 
 	// Wrap router with metrics middleware
-	return metrics.Middleware(router), nil
+	return Middleware(router), nil
 }
 
 // SetupRoutes exposes the route setup for testing
