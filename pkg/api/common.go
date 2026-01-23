@@ -62,13 +62,3 @@ type Page struct {
 	Limit      int   `json:"limit"`
 	TotalCount int   `json:"total_count"`
 }
-
-// HealthResponse represents health check response
-type HealthResponse struct {
-	Status            string                    `json:"status"`
-	Version           string                    `json:"version"`
-	Timestamp         *time.Time                `json:"timestamp,omitempty"`
-	Components        map[string]map[string]any `json:"components,omitempty"`
-	UptimeSeconds     float64                   `json:"uptime_seconds"`
-	ActiveEvaluations int                       `json:"active_evaluations,omitempty"`
-}

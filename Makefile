@@ -103,8 +103,14 @@ install-deps: ## Install dependencies
 
 update-deps: ## Update all dependencies to latest versions
 	@echo "Updating dependencies to latest versions..."
-	@go get -u ./...
+	@go get -t -u ./...
 	@go mod tidy
+	@echo "Dependencies updated"
+
+get-deps: ## Get all dependencies
+	@echo "Getting dependencies..."
+	@go get ./...
+	@go get -t ./...
 	@echo "Dependencies updated"
 
 POSTGRES_VERSION ?= 18

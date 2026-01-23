@@ -36,3 +36,6 @@ go.work.sum
 
 # fix this (it should be in the bin directory)
 /eval_hub
+
+# sqlite database
+/.sqlite

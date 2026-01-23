@@ -161,7 +161,7 @@ func TestServerShutdown(t *testing.T) {
 }
 
 func createServer(port int) (*server.Server, error) {
-	logger, err := logging.NewLogger()
+	logger, _, err := logging.NewLogger()
 	if err != nil {
 		return nil, err
 	}

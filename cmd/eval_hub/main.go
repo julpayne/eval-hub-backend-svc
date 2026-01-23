@@ -14,6 +14,7 @@ import (
 	"github.ibm.com/julpayne/eval-hub-backend-svc/cmd/eval_hub/server"
 	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/config"
 	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/logging"
+	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/storage"
 )
 
 var (
@@ -29,7 +30,7 @@ func main() {
 	// TODO write fatal errors to the error file and close down the server
 
 	// Create logger once for all requests
-	logger, err := logging.NewLogger()
+	logger, logShutdown, err := logging.NewLogger()
 	if err != nil {
 		// we do this as no point trying to continue
 		startUpFailed(nil, err, "Failed to create service logger", logging.FallbackLogger())
@@ -41,17 +42,34 @@ func main() {
 		startUpFailed(nil, err, "Failed to create service config", logger)
 	}
 
+	// set up the storage
+	storage, err := storage.NewStorage(serviceConfig, logger)
+	if err != nil {
+		// we do this as no point trying to continue
+		startUpFailed(serviceConfig, err, "Failed to create storage", logger)
+	}
+	serviceConfig.Storage = storage
+
 	srv, err := server.NewServer(logger, serviceConfig)
 	if err != nil {
 		// we do this as no point trying to continue
-		startUpFailed(nil, err, "Failed to create server", logger)
+		startUpFailed(serviceConfig, err, "Failed to create server", logger)
 	}
+
+	// log the start up details
+	logger.Info("Server starting",
+		"server_port", srv.GetPort(),
+		"version", serviceConfig.Service.Version,
+		"build", serviceConfig.Service.Build,
+		"build_date", serviceConfig.Service.BuildDate,
+		"storage", serviceConfig.Storage.GetDatasourceName(),
+	)
 
 	// Start server in a goroutine
 	go func() {
 		if err := srv.Start(); err != nil && err != http.ErrServerClosed {
 			// we do this as no point trying to continue
-			startUpFailed(nil, err, "Server failed to start", logger)
+			startUpFailed(serviceConfig, err, "Server failed to start", logger)
 		}
 	}()
 
@@ -62,16 +80,23 @@ func main() {
 
 	logger.Info("Shutting down server...")
 
+	// shutdown the storage
+	if err := serviceConfig.Storage.Close(); err != nil {
+		logger.Error("Failed to close storage", "error", err.Error(), "storage", serviceConfig.Storage.GetDatasourceName())
+	}
+
 	// Create a context with timeout for graceful shutdown
 	waitForShutdown := 30 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), waitForShutdown)
 	defer cancel()
 
+	// shutdown the logger
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Error("Server forced to shutdown", "error", err.Error(), "timeout", waitForShutdown)
-		log.Fatal("Server forced to shutdown:", err)
+		_ = logShutdown() // ignore the error
 	} else {
 		logger.Info("Server shutdown gracefully")
+		_ = logShutdown() // ignore the error
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 type EnvMap struct {
-	Mappings map[string]string `mapstructure:"mappings,omitempty"`
+	EnvMappings map[string]string `mapstructure:"env_mappings,omitempty"`
 }
 
 type SecretMap struct {
@@ -103,16 +103,16 @@ func LoadConfig(logger *slog.Logger, version string, build string, buildDate str
 	if secrets.Dir != "" {
 		// check that the secrets directory exists
 		if _, err := os.Stat(secrets.Dir); !os.IsNotExist(err) {
-			for fieldName, value := range secrets.Mappings {
+			for fileName, fieldName := range secrets.Mappings {
 				// the secret file name can be optional by appending :optional to the file name
-				optional := strings.HasSuffix(value, ":optional")
+				optional := strings.HasSuffix(fileName, ":optional")
 				if optional {
-					value = strings.TrimSuffix(value, ":optional")
+					fileName = strings.TrimSuffix(fileName, ":optional")
 				}
-				secret, err := getSecret(secrets.Dir, value, optional)
+				secret, err := getSecret(secrets.Dir, fileName, optional)
 				if err != nil {
 					// log the error and fail the startup (by returning the error)
-					logger.Error("Failed to read secret file", "file", fmt.Sprintf("%s/%s", secrets.Dir, value), "error", err.Error())
+					logger.Error("Failed to read secret file", "file", fmt.Sprintf("%s/%s", secrets.Dir, fileName), "error", err.Error())
 					return nil, err
 				}
 				if secret != "" {
@@ -126,12 +126,9 @@ func LoadConfig(logger *slog.Logger, version string, build string, buildDate str
 	if err := configValues.Unmarshal(&envMappings); err != nil {
 		return nil, err
 	}
-	for fieldName, values := range envMappings.Mappings {
-		envNames := strings.Split(values, ",")
-		elems := make([]string, 0, len(envNames)+1)
-		elems = append(elems, fieldName)
-		elems = append(elems, envNames...)
-		configValues.BindEnv(elems...)
+	for envName, field := range envMappings.EnvMappings {
+		configValues.BindEnv(field, strings.ToUpper(envName))
+		logger.Info("Mapped environment variable", "field_name", field, "env_name", envName)
 	}
 
 	conf := Config{}
