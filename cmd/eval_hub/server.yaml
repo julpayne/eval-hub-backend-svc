@@ -23,11 +23,21 @@ database:
       conn_max_lifetime: 0
       max_idle_conns: 2
       max_open_conns: 0
+      database_name: eval_hub
+      evaluations:
+        table_name: evaluations
+      collections:
+        table_name: collections
     sqlite:
+      fallback: true # if no other database configuration is enabled, use this one
       enabled: false
       driver: sqlite
       url: file::memory:?mode=memory&cache=shared
-      fallback: true # if no other database configuration is enabled, use this one
+      database_name: eval_hub
+      evaluations:
+        table_name: evaluations
+      collections:
+        table_name: collections
   json:
     mongodb:
       enabled: false

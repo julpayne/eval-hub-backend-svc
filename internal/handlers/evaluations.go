@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/execution_context"
+	"github.com/julpayne/eval-hub-backend-svc/internal/executioncontext"
+	"github.com/julpayne/eval-hub-backend-svc/internal/serialization"
+	"github.com/julpayne/eval-hub-backend-svc/pkg/api"
 )
 
 // BackendSpec represents the backend specification
@@ -22,20 +24,34 @@ type BenchmarkSpec struct {
 }
 
 // HandleCreateEvaluation handles POST /api/v1/evaluations/jobs
-func (h *Handlers) HandleCreateEvaluation(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleCreateEvaluation(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodPost, w) {
 		return
 	}
+	// get the body bytes from the context
+	bodyBytes, err := ctx.GetBodyAsBytes()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	evaluation := &api.EvaluationJobConfig{}
+	err = serialization.Unmarshal(h.validate, ctx, bodyBytes, evaluation)
+	if err != nil {
+		h.serializationError(ctx, w, err, http.StatusBadRequest)
+		return
+	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message": "Evaluation creation not yet implemented",
-	})
+	response, err := h.storage.CreateEvaluationJob(ctx, evaluation)
+	if err != nil {
+		h.errorResponse(ctx, w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	h.successResponse(ctx, w, response, http.StatusAccepted)
 }
 
 // HandleListEvaluations handles GET /api/v1/evaluations/jobs
-func (h *Handlers) HandleListEvaluations(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleListEvaluations(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodGet, w) {
 		return
 	}
@@ -51,7 +67,7 @@ func (h *Handlers) HandleListEvaluations(ctx *execution_context.ExecutionContext
 }
 
 // HandleGetEvaluation handles GET /api/v1/evaluations/jobs/{id}
-func (h *Handlers) HandleGetEvaluation(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleGetEvaluation(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodGet, w) {
 		return
 	}
@@ -68,7 +84,7 @@ func (h *Handlers) HandleGetEvaluation(ctx *execution_context.ExecutionContext, 
 }
 
 // HandleCancelEvaluation handles DELETE /api/v1/evaluations/jobs/{id}
-func (h *Handlers) HandleCancelEvaluation(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleCancelEvaluation(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodDelete, w) {
 		return
 	}
@@ -81,7 +97,7 @@ func (h *Handlers) HandleCancelEvaluation(ctx *execution_context.ExecutionContex
 }
 
 // HandleGetEvaluationSummary handles GET /api/v1/evaluations/jobs/{id}/summary
-func (h *Handlers) HandleGetEvaluationSummary(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleGetEvaluationSummary(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodGet, w) {
 		return
 	}
@@ -93,7 +109,7 @@ func (h *Handlers) HandleGetEvaluationSummary(ctx *execution_context.ExecutionCo
 }
 
 // HandleListBenchmarks handles GET /api/v1/evaluations/benchmarks
-func (h *Handlers) HandleListBenchmarks(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleListBenchmarks(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodGet, w) {
 		return
 	}
@@ -107,7 +123,7 @@ func (h *Handlers) HandleListBenchmarks(ctx *execution_context.ExecutionContext,
 }
 
 // HandleListCollections handles GET /api/v1/evaluations/collections
-func (h *Handlers) HandleListCollections(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleListCollections(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodGet, w) {
 		return
 	}
@@ -120,7 +136,7 @@ func (h *Handlers) HandleListCollections(ctx *execution_context.ExecutionContext
 }
 
 // HandleCreateCollection handles POST /api/v1/evaluations/collections
-func (h *Handlers) HandleCreateCollection(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleCreateCollection(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodPost, w) {
 		return
 	}
@@ -133,7 +149,7 @@ func (h *Handlers) HandleCreateCollection(ctx *execution_context.ExecutionContex
 }
 
 // HandleGetCollection handles GET /api/v1/evaluations/collections/{collection_id}
-func (h *Handlers) HandleGetCollection(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleGetCollection(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodGet, w) {
 		return
 	}
@@ -150,7 +166,7 @@ func (h *Handlers) HandleGetCollection(ctx *execution_context.ExecutionContext, 
 }
 
 // HandleUpdateCollection handles PUT /api/v1/evaluations/collections/{collection_id}
-func (h *Handlers) HandleUpdateCollection(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleUpdateCollection(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodPut, w) {
 		return
 	}
@@ -162,7 +178,7 @@ func (h *Handlers) HandleUpdateCollection(ctx *execution_context.ExecutionContex
 }
 
 // HandlePatchCollection handles PATCH /api/v1/evaluations/collections/{collection_id}
-func (h *Handlers) HandlePatchCollection(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandlePatchCollection(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodPatch, w) {
 		return
 	}
@@ -174,7 +190,7 @@ func (h *Handlers) HandlePatchCollection(ctx *execution_context.ExecutionContext
 }
 
 // HandleDeleteCollection handles DELETE /api/v1/evaluations/collections/{collection_id}
-func (h *Handlers) HandleDeleteCollection(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleDeleteCollection(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodDelete, w) {
 		return
 	}
@@ -187,7 +203,7 @@ func (h *Handlers) HandleDeleteCollection(ctx *execution_context.ExecutionContex
 }
 
 // HandleListProviders handles GET /api/v1/evaluations/providers
-func (h *Handlers) HandleListProviders(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleListProviders(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodGet, w) {
 		return
 	}
@@ -201,7 +217,7 @@ func (h *Handlers) HandleListProviders(ctx *execution_context.ExecutionContext, 
 }
 
 // HandleGetProvider handles GET /api/v1/evaluations/providers/{provider_id}
-func (h *Handlers) HandleGetProvider(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleGetProvider(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodGet, w) {
 		return
 	}

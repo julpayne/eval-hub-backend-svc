@@ -81,7 +81,7 @@ type EvaluationJobResults struct {
 
 // EvaluationJobConfig represents evaluation job request schema
 type EvaluationJobConfig struct {
-	Model          ModelRef          `json:"model"`
+	Model          ModelRef          `json:"model" validate:"required"`
 	Benchmarks     []BenchmarkConfig `json:"benchmarks"`
 	Collection     Ref               `json:"collection"`
 	Experiment     ExperimentConfig  `json:"experiment"`

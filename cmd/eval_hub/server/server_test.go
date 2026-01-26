@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/cmd/eval_hub/server"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/config"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/logging"
+	"github.com/julpayne/eval-hub-backend-svc/cmd/eval_hub/server"
+	"github.com/julpayne/eval-hub-backend-svc/internal/config"
+	"github.com/julpayne/eval-hub-backend-svc/internal/logging"
 )
 
 func TestNewServer(t *testing.T) {
@@ -165,5 +165,5 @@ func createServer(port int) (*server.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return server.NewServer(logger, &config.Config{Service: &config.ServiceConfig{Port: port}})
+	return server.NewServer(logger, &config.Config{Service: &config.ServiceConfig{Port: port}}, nil, nil)
 }

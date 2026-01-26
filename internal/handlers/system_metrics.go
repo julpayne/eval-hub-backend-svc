@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/execution_context"
+	"github.com/julpayne/eval-hub-backend-svc/internal/executioncontext"
 )
 
 // HandleGetSystemMetrics handles GET /api/v1/metrics/system
-func (h *Handlers) HandleGetSystemMetrics(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleGetSystemMetrics(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodGet, w) {
 		return
 	}

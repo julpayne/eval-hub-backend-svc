@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"net/http"
+	"time"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/execution_context"
+	"github.com/julpayne/eval-hub-backend-svc/internal/executioncontext"
 )
 
 // newExecutionContext creates a new ExecutionContext with default values. This function
@@ -25,9 +27,9 @@ import (
 //
 // Returns:
 //   - *ExecutionContext: A new execution context ready for use in handlers
-func (s *Server) newExecutionContext(r *http.Request) *execution_context.ExecutionContext {
+func (s *Server) newExecutionContext(r *http.Request) *executioncontext.ExecutionContext {
 	// Enhance logger with request-specific fields
-	enhancedLogger := s.loggerWithRequest(r)
+	requestID, enhancedLogger := s.loggerWithRequest(r)
 
 	scheme := "http"
 	if r.TLS != nil {
@@ -35,16 +37,23 @@ func (s *Server) newExecutionContext(r *http.Request) *execution_context.Executi
 	}
 	baseURL := scheme + "://" + r.Host
 
-	return &execution_context.ExecutionContext{
-		Logger:         enhancedLogger,
-		Config:         s.serviceConfig,
-		Method:         r.Method,
-		URI:            r.URL.Path,
-		BaseURL:        baseURL,
-		RawQuery:       r.URL.RawQuery,
-		Headers:        r.Header,
-		TimeoutMinutes: 60,
-		RetryAttempts:  3,
-		Metadata:       make(map[string]interface{}),
-	}
+	return executioncontext.NewExecutionContext(
+		context.Background(),
+		requestID,
+		enhancedLogger,
+		r.Method,
+		r.URL.Path,
+		baseURL,
+		r.URL.RawQuery,
+		r.Header,
+		r.Body,
+		"",
+		"",
+		"",
+		time.Minute*60,
+		3,
+		make(map[string]interface{}),
+		nil,
+		"",
+	)
 }

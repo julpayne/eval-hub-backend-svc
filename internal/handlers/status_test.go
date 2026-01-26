@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/handlers"
+	"github.com/julpayne/eval-hub-backend-svc/internal/handlers"
 )
 
 func TestHandleStatus(t *testing.T) {
-	h := handlers.New()
+	h := handlers.New(nil, nil)
 
 	t.Run("GET request returns status information", func(t *testing.T) {
 		ctx := createExecutionContext(http.MethodGet, "/api/v1/status")

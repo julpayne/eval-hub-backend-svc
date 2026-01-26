@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/config"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/constants"
+	"github.com/julpayne/eval-hub-backend-svc/internal/config"
+	"github.com/julpayne/eval-hub-backend-svc/internal/constants"
 )
 
 // handle ready and termination messages

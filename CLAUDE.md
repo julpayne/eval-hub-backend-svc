@@ -67,7 +67,7 @@ This project follows the standard Go project layout with a clear separation betw
 - **cmd/eval_hub/** - Main application entry point with configuration (server.yaml)
 - **internal/config/** - Configuration loading with Viper
 - **internal/constants/** - Shared constants (log field names, etc.)
-- **internal/execution_context/** - ExecutionContext pattern implementation
+- **internal/executioncontext/** - ExecutionContext pattern implementation
 - **internal/handlers/** - HTTP request handlers
 - **internal/logging/** - Logger creation and request enhancement
 - **internal/metrics/** - Prometheus metrics and middleware
@@ -88,7 +88,7 @@ The ExecutionContext:
 - Contains a request-scoped logger with enriched fields
 - Carries the service configuration
 - Holds evaluation-specific state (model info, timeouts, retries, metadata)
-- Is created in server route handlers via `execution_context.NewExecutionContext(r, logger, config)`
+- Is created in server route handlers via `executioncontext.NewExecutionContext(r, logger, config)`
 
 This pattern enables:
 - Automatic request ID tracking (from `X-Global-Transaction-Id` header or auto-generated UUID)
@@ -141,7 +141,7 @@ Uses standard library `net/http.ServeMux` without a web framework:
 Example:
 ```go
 router.HandleFunc("/api/v1/evaluations/jobs", func(w http.ResponseWriter, r *http.Request) {
-    ctx := execution_context.NewExecutionContext(r, s.logger, s.serviceConfig)
+    ctx := executioncontext.NewExecutionContext(r, s.logger, s.serviceConfig)
     switch r.Method {
     case http.MethodPost:
         h.HandleCreateEvaluation(ctx, w, r)

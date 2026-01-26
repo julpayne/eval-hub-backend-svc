@@ -8,9 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/config"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/constants"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/handlers"
+	"github.com/go-playground/validator/v10"
+	"github.com/julpayne/eval-hub-backend-svc/internal/abstractions"
+	"github.com/julpayne/eval-hub-backend-svc/internal/config"
+	"github.com/julpayne/eval-hub-backend-svc/internal/constants"
+	"github.com/julpayne/eval-hub-backend-svc/internal/handlers"
+	"github.com/julpayne/eval-hub-backend-svc/internal/platform"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -21,6 +24,8 @@ type Server struct {
 	port          int
 	logger        *slog.Logger
 	serviceConfig *config.Config
+	storage       abstractions.Storage
+	validate      *validator.Validate
 }
 
 // NewServer creates a new HTTP server instance with the provided logger and configuration.
@@ -42,18 +47,26 @@ type Server struct {
 // Returns:
 //   - *Server: A configured server instance
 //   - error: An error if logger or serviceConfig is nil
-func NewServer(logger *slog.Logger, serviceConfig *config.Config) (*Server, error) {
+func NewServer(logger *slog.Logger, serviceConfig *config.Config, storage abstractions.Storage, validate *validator.Validate) (*Server, error) {
 	if logger == nil {
 		return nil, fmt.Errorf("logger is required for the server")
 	}
 	if (serviceConfig == nil) || (serviceConfig.Service == nil) {
 		return nil, fmt.Errorf("service config is required for the server")
 	}
+	if (storage == nil) && !platform.IsDevelopment() {
+		return nil, fmt.Errorf("executioncontext is required for the server in production")
+	}
+	if (validate == nil) && !platform.IsDevelopment() { // in development, we can run without a validator in the test code
+		return nil, fmt.Errorf("validator is required for the server in production")
+	}
 
 	return &Server{
 		port:          serviceConfig.Service.Port,
 		logger:        logger,
 		serviceConfig: serviceConfig,
+		storage:       storage,
+		validate:      validate,
 	}, nil
 }
 
@@ -83,17 +96,13 @@ func (s *Server) GetPort() int {
 //
 // Returns:
 //   - *slog.Logger: A new logger instance with request-specific fields attached
-func (s *Server) loggerWithRequest(r *http.Request) *slog.Logger {
-	enhancedLogger := s.logger
-
-	// Extract RequestID from X-Global-Transaction-Id header, or generate a UUID if not present
+func (s *Server) loggerWithRequest(r *http.Request) (string, *slog.Logger) {
 	requestID := r.Header.Get("X-Global-Transaction-Id")
 	if requestID == "" {
-		requestID = uuid.New().String()
+		requestID = uuid.New().String() // generate a UUID if not present
 	}
 
-	// Add request_id to logger using With
-	enhancedLogger = enhancedLogger.With(constants.LOG_REQUEST_ID, requestID)
+	enhancedLogger := s.logger.With(constants.LOG_REQUEST_ID, requestID)
 
 	// Extract and add HTTP method and URI if they exist
 	method := r.Method
@@ -140,12 +149,12 @@ func (s *Server) loggerWithRequest(r *http.Request) *slog.Logger {
 		enhancedLogger = enhancedLogger.With(constants.LOG_REFERER, referer)
 	}
 
-	return enhancedLogger
+	return requestID, enhancedLogger
 }
 
 func (s *Server) setupRoutes() (http.Handler, error) {
 	router := http.NewServeMux()
-	h := handlers.New()
+	h := handlers.New(s.storage, s.validate)
 
 	// Health and status endpoints
 	router.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {

@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/execution_context"
+	"github.com/julpayne/eval-hub-backend-svc/internal/executioncontext"
 )
 
-func (h *Handlers) HandleStatus(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleStatus(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if !h.checkMethod(ctx, http.MethodGet, w) {
 		return
 	}

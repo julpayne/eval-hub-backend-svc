@@ -11,10 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/cmd/eval_hub/server"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/config"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/logging"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/storage"
+	"github.com/julpayne/eval-hub-backend-svc/cmd/eval_hub/server"
+	"github.com/julpayne/eval-hub-backend-svc/internal/config"
+	"github.com/julpayne/eval-hub-backend-svc/internal/logging"
+	"github.com/julpayne/eval-hub-backend-svc/internal/serialization"
+	"github.com/julpayne/eval-hub-backend-svc/internal/storage"
 )
 
 var (
@@ -42,15 +43,23 @@ func main() {
 		startUpFailed(nil, err, "Failed to create service config", logger)
 	}
 
+	// set up the validator
+	validate, err := serialization.NewValidator()
+	if err != nil {
+		// we do this as no point trying to continue
+		startUpFailed(serviceConfig, err, "Failed to create validator", logger)
+	}
+	// serviceConfig.Validator = validator
+
 	// set up the storage
 	storage, err := storage.NewStorage(serviceConfig, logger)
 	if err != nil {
 		// we do this as no point trying to continue
 		startUpFailed(serviceConfig, err, "Failed to create storage", logger)
 	}
-	serviceConfig.Storage = storage
+	// serviceConfig.Storage = storage
 
-	srv, err := server.NewServer(logger, serviceConfig)
+	srv, err := server.NewServer(logger, serviceConfig, storage, validate)
 	if err != nil {
 		// we do this as no point trying to continue
 		startUpFailed(serviceConfig, err, "Failed to create server", logger)
@@ -62,7 +71,8 @@ func main() {
 		"version", serviceConfig.Service.Version,
 		"build", serviceConfig.Service.Build,
 		"build_date", serviceConfig.Service.BuildDate,
-		"storage", serviceConfig.Storage.GetDatasourceName(),
+		"storage", storage.GetDatasourceName(),
+		"validator", validate != nil,
 	)
 
 	// Start server in a goroutine
@@ -81,8 +91,8 @@ func main() {
 	logger.Info("Shutting down server...")
 
 	// shutdown the storage
-	if err := serviceConfig.Storage.Close(); err != nil {
-		logger.Error("Failed to close storage", "error", err.Error(), "storage", serviceConfig.Storage.GetDatasourceName())
+	if err := storage.Close(); err != nil {
+		logger.Error("Failed to close storage", "error", err.Error(), "storage", storage.GetDatasourceName())
 	}
 
 	// Create a context with timeout for graceful shutdown

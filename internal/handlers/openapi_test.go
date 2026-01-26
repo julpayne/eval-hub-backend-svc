@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/handlers"
+	"github.com/julpayne/eval-hub-backend-svc/internal/handlers"
 )
 
 func TestHandleOpenAPI(t *testing.T) {
-	h := handlers.New()
+	h := handlers.New(nil, nil)
 
 	// Ensure the OpenAPI file exists for testing
 	apiPath := filepath.Join("..", "..", "api", "openapi.yaml")
@@ -63,10 +63,7 @@ func TestHandleOpenAPI(t *testing.T) {
 
 	t.Run("JSON content type when Accept header is application/json", func(t *testing.T) {
 		ctx := createExecutionContext(http.MethodGet, "/openapi.yaml")
-		if ctx.Headers == nil {
-			ctx.Headers = make(map[string][]string)
-		}
-		ctx.Headers["Accept"] = []string{"application/json"}
+		ctx.SetHeader("Accept", "application/json")
 		w := httptest.NewRecorder()
 
 		h.HandleOpenAPI(ctx, w)
@@ -79,7 +76,7 @@ func TestHandleOpenAPI(t *testing.T) {
 }
 
 func TestHandleDocs(t *testing.T) {
-	h := handlers.New()
+	h := handlers.New(nil, nil)
 
 	t.Run("GET request returns HTML documentation", func(t *testing.T) {
 		ctx := createExecutionContext(http.MethodGet, "/docs")

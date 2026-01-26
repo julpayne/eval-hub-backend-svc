@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/execution_context"
+	"github.com/julpayne/eval-hub-backend-svc/internal/executioncontext"
 )
 
-func (h *Handlers) HandleOpenAPI(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleOpenAPI(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if ctx.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -59,7 +59,7 @@ func (h *Handlers) HandleOpenAPI(ctx *execution_context.ExecutionContext, w http
 	w.Write(spec)
 }
 
-func (h *Handlers) HandleDocs(ctx *execution_context.ExecutionContext, w http.ResponseWriter) {
+func (h *Handlers) HandleDocs(ctx *executioncontext.ExecutionContext, w http.ResponseWriter) {
 	if ctx.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

@@ -3,7 +3,10 @@ package storage_sql
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	// import the postgres driver - "pgx"
@@ -11,20 +14,15 @@ import (
 	// import the sqlite driver - "sqlite"
 	_ "modernc.org/sqlite"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/abstractions"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/config"
-	"github.ibm.com/julpayne/eval-hub-backend-svc/pkg/api"
-)
-
-const (
-	DriverPostgres = "pgx"
-	DriverSQLite   = "sqlite"
+	"github.com/julpayne/eval-hub-backend-svc/internal/abstractions"
+	"github.com/julpayne/eval-hub-backend-svc/internal/config"
+	"github.com/julpayne/eval-hub-backend-svc/internal/executioncontext"
+	"github.com/julpayne/eval-hub-backend-svc/pkg/api"
 )
 
 type SQLStorage struct {
 	sqlConfig *config.SQLDatabaseConfig
 	pool      *sql.DB
-	ctx       context.Context
 }
 
 func NewSQLStorage(sqlConfig *config.SQLDatabaseConfig, logger *slog.Logger) (abstractions.Storage, error) {
@@ -48,7 +46,6 @@ func NewSQLStorage(sqlConfig *config.SQLDatabaseConfig, logger *slog.Logger) (ab
 	storage := &SQLStorage{
 		sqlConfig: sqlConfig,
 		pool:      pool,
-		ctx:       context.Background(),
 	}
 
 	logger.Info("Pinging SQL storage", "driver", sqlConfig.Driver, "url", sqlConfig.URL)
@@ -63,7 +60,7 @@ func NewSQLStorage(sqlConfig *config.SQLDatabaseConfig, logger *slog.Logger) (ab
 // Ping the database to verify DSN provided by the user is valid and the
 // server accessible. If the ping fails exit the program with an error.
 func (s *SQLStorage) Ping(timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(s.ctx, timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	return s.pool.PingContext(ctx)
@@ -73,47 +70,106 @@ func (s *SQLStorage) GetDatasourceName() string {
 	return s.sqlConfig.Driver
 }
 
-func (s *SQLStorage) CreateEvaluationJob(evaluation *api.EvaluationJobConfig) error {
-	return nil
+func (s *SQLStorage) exec(query string, args ...any) (sql.Result, error) {
+	return s.pool.ExecContext(context.Background(), query, args...)
 }
 
-func (s *SQLStorage) GetEvaluationJob(id string) (*api.EvaluationJobResource, error) {
+func (s *SQLStorage) checkDatabase() error {
+	if s.sqlConfig.DatabaseName == "" {
+		return fmt.Errorf("database name is required")
+	}
+	_, err := s.exec(createDatabaseStatement(), s.sqlConfig.DatabaseName)
+	return err
+}
+
+func (s *SQLStorage) checkTable(tableConfig *config.SQLTableConfig) error {
+	if err := s.checkDatabase(); err != nil {
+		return err
+	}
+	if err := tableConfig.CheckConfig(); err != nil {
+		return err
+	}
+	_, err := s.exec(createTableStatement(), tableConfig.TableName, tableConfig.JSONFieldType)
+	return err
+}
+
+// CreateEvaluationJob creates a new evaluation job in the database
+// the evaluation job is stored in the evaluations table as a JSON string
+// the evaluation job is returned as a EvaluationJobResource
+// This should use transactions etc and requires cleaning up
+func (s *SQLStorage) CreateEvaluationJob(executionContext *executioncontext.ExecutionContext, evaluation *api.EvaluationJobConfig) (*api.EvaluationJobResource, error) {
+	if err := s.checkTable(&s.sqlConfig.Evaluations); err != nil {
+		return nil, err
+	}
+	evaluationJSON, err := json.Marshal(evaluation)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.exec(createAddEntityStatement(), s.sqlConfig.Evaluations.TableName, string(evaluationJSON))
+	if err != nil {
+		return nil, err
+	}
+	evaluationID, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	evaluationResource := &api.EvaluationJobResource{
+		Resource: api.Resource{
+			ID:        strconv.FormatInt(evaluationID, 10),
+			Tenant:    "TODO",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		EvaluationJobConfig: *evaluation,
+		Status: api.EvaluationJobStatus{
+			EvaluationJobState: api.EvaluationJobState{
+				State:   api.StatePending,
+				Message: "Evaluation job created",
+			},
+			Benchmarks: nil,
+		},
+		Results: nil,
+	}
+	return evaluationResource, nil
+}
+
+func (s *SQLStorage) GetEvaluationJob(ctx *executioncontext.ExecutionContext, id string) (*api.EvaluationJobResource, error) {
 	return nil, nil
 }
 
-func (s *SQLStorage) GetEvaluationJobs(summary bool, limit int, offset int, statusFilter string) (*api.EvaluationJobResourceList, error) {
+func (s *SQLStorage) GetEvaluationJobs(ctx *executioncontext.ExecutionContext, summary bool, limit int, offset int, statusFilter string) (*api.EvaluationJobResourceList, error) {
 	return nil, nil
 }
 
-func (s *SQLStorage) DeleteEvaluationJob(id string, hardDelete bool) error {
+func (s *SQLStorage) DeleteEvaluationJob(ctx *executioncontext.ExecutionContext, id string, hardDelete bool) error {
 	return nil
 }
 
-func (s *SQLStorage) UpdateBenchmarkStatusForJob(id string, status api.BenchmarkStatus) error {
+func (s *SQLStorage) UpdateBenchmarkStatusForJob(ctx *executioncontext.ExecutionContext, id string, status api.BenchmarkStatus) error {
 	return nil
 }
 
-func (s *SQLStorage) UpdateEvaluationJobStatus(id string, state api.EvaluationJobState) error {
+func (s *SQLStorage) UpdateEvaluationJobStatus(ctx *executioncontext.ExecutionContext, id string, state api.EvaluationJobState) error {
 	return nil
 }
 
-func (s *SQLStorage) CreateCollection(collection *api.CollectionResource) error {
+func (s *SQLStorage) CreateCollection(ctx *executioncontext.ExecutionContext, collection *api.CollectionResource) error {
 	return nil
 }
 
-func (s *SQLStorage) GetCollection(id string, summary bool) (*api.CollectionResource, error) {
+func (s *SQLStorage) GetCollection(ctx *executioncontext.ExecutionContext, id string, summary bool) (*api.CollectionResource, error) {
 	return nil, nil
 }
 
-func (s *SQLStorage) GetCollections(limit int, offset int) (*api.CollectionResourceList, error) {
+func (s *SQLStorage) GetCollections(ctx *executioncontext.ExecutionContext, limit int, offset int) (*api.CollectionResourceList, error) {
 	return nil, nil
 }
 
-func (s *SQLStorage) UpdateCollection(collection *api.CollectionResource) error {
+func (s *SQLStorage) UpdateCollection(ctx *executioncontext.ExecutionContext, collection *api.CollectionResource) error {
 	return nil
 }
 
-func (s *SQLStorage) DeleteCollection(id string) error {
+func (s *SQLStorage) DeleteCollection(ctx *executioncontext.ExecutionContext, id string) error {
 	return nil
 }
 

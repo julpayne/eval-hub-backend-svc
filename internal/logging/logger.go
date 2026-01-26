@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/julpayne/eval-hub-backend-svc/internal/executioncontext"
 	"go.uber.org/zap"
 	"go.uber.org/zap/exp/zapslog"
 	"go.uber.org/zap/zapcore"
@@ -38,4 +39,14 @@ func newShutdownFunc(core zapcore.Core) ShutdownFunc {
 	return func() error {
 		return core.Sync()
 	}
+}
+
+func LogRequestFailed(ctx *executioncontext.ExecutionContext, code int, errorMessage string) {
+	// log the failed request, the request details and requestId have already been added to the logger
+	ctx.Logger.Info("Request failed", "error", errorMessage, "code", code)
+}
+
+func LogRequestSuccess(ctx *executioncontext.ExecutionContext, code int, response any) {
+	// log the successful request, the request details and requestId have already been added to the logger
+	ctx.Logger.Info("Request successful", "response", response)
 }

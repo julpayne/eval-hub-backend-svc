@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/internal/metrics"
+	"github.com/julpayne/eval-hub-backend-svc/internal/metrics"
 )
 
 // Middleware wraps an http.Handler to collect Prometheus metrics

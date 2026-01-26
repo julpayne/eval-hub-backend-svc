@@ -3,7 +3,8 @@ package abstractions
 import (
 	"time"
 
-	"github.ibm.com/julpayne/eval-hub-backend-svc/pkg/api"
+	"github.com/julpayne/eval-hub-backend-svc/internal/executioncontext"
+	"github.com/julpayne/eval-hub-backend-svc/pkg/api"
 )
 
 type Storage interface {
@@ -13,19 +14,19 @@ type Storage interface {
 	Ping(timeout time.Duration) error
 
 	// Evaluation job operations
-	CreateEvaluationJob(evaluation *api.EvaluationJobConfig) error
-	GetEvaluationJob(id string) (*api.EvaluationJobResource, error)
-	GetEvaluationJobs(summary bool, limit int, offset int, statusFilter string) (*api.EvaluationJobResourceList, error)
-	DeleteEvaluationJob(id string, hardDelete bool) error
-	UpdateBenchmarkStatusForJob(id string, status api.BenchmarkStatus) error
-	UpdateEvaluationJobStatus(id string, state api.EvaluationJobState) error
+	CreateEvaluationJob(ctx *executioncontext.ExecutionContext, evaluation *api.EvaluationJobConfig) (*api.EvaluationJobResource, error)
+	GetEvaluationJob(ctx *executioncontext.ExecutionContext, id string) (*api.EvaluationJobResource, error)
+	GetEvaluationJobs(ctx *executioncontext.ExecutionContext, summary bool, limit int, offset int, statusFilter string) (*api.EvaluationJobResourceList, error)
+	DeleteEvaluationJob(ctx *executioncontext.ExecutionContext, id string, hardDelete bool) error
+	UpdateBenchmarkStatusForJob(ctx *executioncontext.ExecutionContext, id string, status api.BenchmarkStatus) error
+	UpdateEvaluationJobStatus(ctx *executioncontext.ExecutionContext, id string, state api.EvaluationJobState) error
 
 	// Collection operations
-	CreateCollection(collection *api.CollectionResource) error
-	GetCollection(id string, summary bool) (*api.CollectionResource, error)
-	GetCollections(limit int, offset int) (*api.CollectionResourceList, error)
-	UpdateCollection(collection *api.CollectionResource) error
-	DeleteCollection(id string) error
+	CreateCollection(ctx *executioncontext.ExecutionContext, collection *api.CollectionResource) error
+	GetCollection(ctx *executioncontext.ExecutionContext, id string, summary bool) (*api.CollectionResource, error)
+	GetCollections(ctx *executioncontext.ExecutionContext, limit int, offset int) (*api.CollectionResourceList, error)
+	UpdateCollection(ctx *executioncontext.ExecutionContext, collection *api.CollectionResource) error
+	DeleteCollection(ctx *executioncontext.ExecutionContext, id string) error
 
 	// Close the storage connection
 	Close() error

@@ -85,7 +85,7 @@ test: ## Run unit tests
 
 test-fvt: ## Run FVT (Functional Verification Tests) using godog
 	@echo "Running FVT tests..."
-	@go test -v ./tests/features/...
+	@DEVELOPMENT=true go test -v ./tests/features/...
 
 test-all: test test-fvt ## Run all tests (unit + FVT)
 
