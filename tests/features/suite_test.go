@@ -20,7 +20,8 @@ func TestFeatures(t *testing.T) {
 	}
 
 	suite := godog.TestSuite{
-		ScenarioInitializer: InitializeScenario,
+		TestSuiteInitializer: InitializeTestSuite,
+		ScenarioInitializer:  InitializeScenario,
 		Options: &godog.Options{
 			Format:   "pretty",
 			Paths:    []string{featuresPath},
