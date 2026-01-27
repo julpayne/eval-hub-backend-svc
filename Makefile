@@ -38,9 +38,8 @@ clean: ## Remove build artifacts
 	@echo "Clean complete"
 
 BUILD_PACKAGE ?= main
-APP_VERSION ?= 0.0.1
 FULL_BUILD_NUMBER ?= 0.0.1
-LDFLAGS_X = -X "${BUILD_PACKAGE}.Version=${APP_VERSION}" -X "${BUILD_PACKAGE}.Build=${FULL_BUILD_NUMBER}" -X "${BUILD_PACKAGE}.BuildDate=$(DATE)"
+LDFLAGS_X = -X "${BUILD_PACKAGE}.Build=${FULL_BUILD_NUMBER}" -X "${BUILD_PACKAGE}.BuildDate=$(DATE)"
 LDFLAGS = -buildmode=exe ${LDFLAGS_X}
 
 build: ## Build the binary
@@ -85,7 +84,7 @@ test: ## Run unit tests
 
 test-fvt: ## Run FVT (Functional Verification Tests) using godog
 	@echo "Running FVT tests..."
-	@DEVELOPMENT=true go test -v ./tests/features/...
+	@go test -v ./tests/features/...
 
 test-all: test test-fvt ## Run all tests (unit + FVT)
 

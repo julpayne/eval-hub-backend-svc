@@ -1,4 +1,4 @@
-package serialization
+package validation
 
 import (
 	"reflect"

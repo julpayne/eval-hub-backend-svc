@@ -14,13 +14,13 @@ import (
 	"github.com/julpayne/eval-hub-backend-svc/cmd/eval_hub/server"
 	"github.com/julpayne/eval-hub-backend-svc/internal/config"
 	"github.com/julpayne/eval-hub-backend-svc/internal/logging"
-	"github.com/julpayne/eval-hub-backend-svc/internal/serialization"
 	"github.com/julpayne/eval-hub-backend-svc/internal/storage"
+	"github.com/julpayne/eval-hub-backend-svc/internal/validation"
 )
 
 var (
-	// Version is set during the compilation
-	Version string
+	// Version can be set during the compilation
+	Version string = "0.0.1"
 	// Build is set during the compilation
 	Build string
 	// BuildDate is set during the compilation
@@ -44,7 +44,7 @@ func main() {
 	}
 
 	// set up the validator
-	validate, err := serialization.NewValidator()
+	validate, err := validation.NewValidator()
 	if err != nil {
 		// we do this as no point trying to continue
 		startUpFailed(serviceConfig, err, "Failed to create validator", logger)

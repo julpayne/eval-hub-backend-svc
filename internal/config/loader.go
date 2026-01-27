@@ -83,13 +83,14 @@ func readConfig(logger *slog.Logger, defaultConfigValues *viper.Viper, name stri
 //   - error: An error if configuration cannot be loaded or is invalid
 func LoadConfig(logger *slog.Logger, version string, build string, buildDate string) (*Config, error) {
 	// first load the server.yaml as the default config (the server.yaml from cmd/eval_hub)
-	defaultConfigValues, err := readConfig(logger, nil, "server", "yaml", "config", "./cmd/eval_hub")
+	defaultConfigValues, err := readConfig(logger, nil, "server", "yaml", "config", "./cmd/eval_hub", "../../cmd/eval_hub")
 	if err != nil {
 		return nil, err
 	}
 
 	// now load the cluster config if found
 	configValues, err := readConfig(logger, defaultConfigValues, "config", "yaml", ".", "..")
+	// TODO: in production we need to find this file
 	// for now we ignre this error because there is no extra config when running locally
 	// if err != nil {
 	//	 return nil, err

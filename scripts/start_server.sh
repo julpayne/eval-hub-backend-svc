@@ -14,8 +14,6 @@ PORT="$4"
 
 export GOCOVERDIR="$5"
 
-export DEVELOPMENT=true
-
 # set -x
 
 if [[ ! -f "${EXE}" ]]; then

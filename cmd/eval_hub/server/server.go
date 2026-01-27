@@ -13,7 +13,6 @@ import (
 	"github.com/julpayne/eval-hub-backend-svc/internal/config"
 	"github.com/julpayne/eval-hub-backend-svc/internal/constants"
 	"github.com/julpayne/eval-hub-backend-svc/internal/handlers"
-	"github.com/julpayne/eval-hub-backend-svc/internal/platform"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -54,11 +53,11 @@ func NewServer(logger *slog.Logger, serviceConfig *config.Config, storage abstra
 	if (serviceConfig == nil) || (serviceConfig.Service == nil) {
 		return nil, fmt.Errorf("service config is required for the server")
 	}
-	if (storage == nil) && !platform.IsDevelopment() {
-		return nil, fmt.Errorf("executioncontext is required for the server in production")
+	if storage == nil {
+		return nil, fmt.Errorf("executioncontext is required for the server")
 	}
-	if (validate == nil) && !platform.IsDevelopment() { // in development, we can run without a validator in the test code
-		return nil, fmt.Errorf("validator is required for the server in production")
+	if validate == nil {
+		return nil, fmt.Errorf("validator is required for the server")
 	}
 
 	return &Server{

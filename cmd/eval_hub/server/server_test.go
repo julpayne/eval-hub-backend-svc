@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +12,8 @@ import (
 	"github.com/julpayne/eval-hub-backend-svc/cmd/eval_hub/server"
 	"github.com/julpayne/eval-hub-backend-svc/internal/config"
 	"github.com/julpayne/eval-hub-backend-svc/internal/logging"
+	"github.com/julpayne/eval-hub-backend-svc/internal/storage"
+	"github.com/julpayne/eval-hub-backend-svc/internal/validation"
 )
 
 func TestNewServer(t *testing.T) {
@@ -165,5 +168,18 @@ func createServer(port int) (*server.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return server.NewServer(logger, &config.Config{Service: &config.ServiceConfig{Port: port}}, nil, nil)
+	validate, err := validation.NewValidator()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validator: %w", err)
+	}
+	serviceConfig, err := config.LoadConfig(logger, "0.0.1", "local", time.Now().Format(time.RFC3339))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load service config: %w", err)
+	}
+	serviceConfig.Service.Port = port
+	storage, err := storage.NewStorage(serviceConfig, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create storage: %w", err)
+	}
+	return server.NewServer(logger, serviceConfig, storage, validate)
 }
